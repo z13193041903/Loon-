@@ -1,0 +1,59 @@
+# 返鸭返利比价 — Loon 插件
+
+在淘宝 / 京东 / 拼多多商品详情页首图下方展示「返鸭」APP 预估返佣金额，并参考慢慢买展示历史价格趋势、判断涨价。
+
+## 文件
+
+| 文件          | 说明                                                      |
+| ----------- | ------------------------------------------------------- |
+| `返鸭.plugin` | Loon 插件配置文件（元信息 + 参数 + 脚本规则 + MitM），上传到 `插件/plugin/返鸭/` |
+| `FanYa.js`  | 核心脚本：商品解析 → 佣金查询 → 比价查询 → 页面注入，上传到 `插件/plugin/返鸭/`      |
+
+## 模板结构分析（参考来源）
+
+- **WPS_checkin.lpx**：提供了 `[Argument]` 参数化写法（`switch` / `input` 类型），脚本经 `argument=[{...}]` 接收用户配置。本插件沿用该模式。
+- **JD_Price.lpx**：提供了 `http-response pattern script-path=..., requires-body=true, tag=...` 的页面改写规则写法，以及 `[MitM] hostname=` 声明。注入实现参考其配套脚本（wareBusiness 楼层插入 / mtop consumerProtection 插入 / 慢慢买 getHistoryTrend 接口）。
+
+## 安装与配置
+
+1. **上传到 GitHub**：把 `FanYa.js`、`返鸭.plugin`、`README.md` 上传到仓库 `插件/plugin/返鸭/` 目录（main 分支）。
+2. **导入 Loon**：Loon → 配置 → 插件 → 添加插件，填入：  
+   `https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/返鸭.plugin`
+3. **开启 MitM**：确保 Loon 的 MitM 开关打开，证书已安装并信任；hostname 已在插件中声明（`api.m.jd.com, in.m.jd.com, trade-acs.m.taobao.com, mobile.yangkeduo.com, item.taobao.com, detail.m.tmall.com`）。**如你的返鸭 API 是 HTTPS，需把自己的域名追加到 `[Mitm] hostname=` 行**。
+4. **填写参数**（插件详情页）：
+   - `返鸭API地址`：你的返鸭服务端，如 `https://api.fanya.example.com`；留空则只显示比价
+   - `返鸭Token`：返鸭 APP 个人中心的访问令牌
+   - 两个开关控制佣金/趋势是否展示
+
+## 返鸭服务端接口约定
+
+佣金数据由你的返鸭服务端提供，需实现：
+
+```
+POST {返鸭API地址}/api/commission
+Header: X-FanYa-Token: <Token>
+Body: {"platform":"jd|taobao|pdd","item_id":"123","title":"...","share_url":"..."}
+
+响应:
+{"code":0,"data":{"commission":"12.50","rate":"8.5%","url":"fanya://..."}}
+```
+
+## 各平台注入方式
+
+| 平台      | 入口                                                          | 注入方式                                                        |
+| ------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| 京东 App  | `api.m.jd.com/client.action?functionId=wareBusiness`        | 楼层数组插入自定义文案楼层（首图/价格下方）                                      |
+| 淘宝 App  | `trade-acs.m.taobao.com/gw/mtop.taobao.detail.getdetail`    | apiStack 的 consumerProtection 服务条目中插入                       |
+| 拼多多 App | `mobile.yangkeduo.com/proxy/api/api/oak/integration/render` | PDD 页面为 OAK 动态渲染，无稳定文案楼层：JSON 附加 `fanya_rebate` 字段 + 系统通知兜底 |
+| 三平台 H5  | graphext/item.htm/goods.html                                | `</body>` 前注入卡片，页面脚本自动尝试移动到首图下方                             |
+
+## 比价逻辑
+
+- 数据源：慢慢买 `getHistoryTrend`（按商品分享链接查询，三平台通用）
+- 解析近 360 天价格曲线，输出：历史最低价及日期、30/90 天最低、当前价对比（🔺涨价 / 🔻降价 / ✅持平可入手）
+
+## 注意事项
+
+- 电商 App 频繁改版，淘宝/京东响应结构若变动需同步调整注入字段；脚本含异常兜底（失败时放行原响应，不影响正常浏览）
+- 比价接口为第三方公共服务，可能被限频；脚本已设置 timeout=20
+- 频繁刷新商品页可能触发京东风控，脚本检测到风控码时直接放行
