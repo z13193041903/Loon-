@@ -1,5 +1,5 @@
 #!name = 上汽荣威自动签到
-#!desc = 🚗 多账号自动看视频签到，+15积分/天。首次使用：打开「捕获Token」开关 → 荣威App进一次签到页 → 收到通知后关闭
+#!desc = 🚗 上汽荣威多账号自动看视频签到，+5～15积分/天。  首次使用：打开「捕获Token」开关 → 荣威App进一次签到页 → 收到通知后关闭
 #!author = KEMO
 #!homepage = https://github.com/z13193041903/Loon-/tree/main/插件/plugin/上汽荣威签到
 #!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Car.png
