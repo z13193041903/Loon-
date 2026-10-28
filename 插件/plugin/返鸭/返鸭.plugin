@@ -1,0 +1,31 @@
+#!name = 返鸭返利比价
+#!desc = 🦆 在淘宝/京东/拼多多商品详情页展示「返鸭」APP预估返佣金额，并参考慢慢买展示历史价格趋势、判断是否涨价。首次使用：填写返鸭API地址与Token；需开启MitM并信任证书。
+#!author = z13193041903
+#!homepage = https://github.com/z13193041903/Loon-/tree/main/插件/plugin/返鸭
+#!icon = https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/JD.png
+#!tag = 功能增强,返利
+#!date = 2026-10-29
+#!type = normal
+#!loon_version = 3.2.4(787)
+
+[Argument]
+fanya_api = input,"",type=string,tag=返鸭API地址,desc=你的返鸭服务端地址，如 https://api.fanya.example.com（不含查询参数），留空则仅显示价格趋势
+fanya_token = input,"",type=string,tag=返鸭Token,desc=调用返鸭佣金接口的访问令牌，在返鸭APP个人中心获取
+show_commission = switch,true,type=boolean,tag=显示返佣金额,desc=是否在商品详情页展示返鸭预估返佣
+show_trend = switch,true,type=boolean,tag=显示价格趋势,desc=是否展示慢慢买历史价格趋势与涨价判断
+
+[Script]
+http-response https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=wareBusiness script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=京东商品返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+http-response https?:\/\/trade-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.detail\.getdetail script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=淘宝商品返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+http-response https?:\/\/mobile\.yangkeduo\.com\/proxy\/api\/api\/oak\/integration\/render script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=拼多多商品返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+http-response https?:\/\/in\.m\.jd\.com\/product\/graphext\/\d+\.html script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=京东网页返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+http-response https?:\/\/(item|detail\.m)\.(taobao|tmall)\.com\/(item|item_detail)\.htm script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=淘宝网页返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+http-response https?:\/\/mobile\.yangkeduo\.com\/goods\.html script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/返鸭/FanYa.js, requires-body=true, timeout=20, tag=拼多多网页返佣比价, argument=fanya_api={fanya_api}&fanya_token={fanya_token}&show_commission={show_commission}&show_trend={show_trend}
+
+[Mitm]
+hostname = api.m.jd.com, in.m.jd.com, trade-acs.m.taobao.com, mobile.yangkeduo.com, item.taobao.com, detail.m.tmall.com
