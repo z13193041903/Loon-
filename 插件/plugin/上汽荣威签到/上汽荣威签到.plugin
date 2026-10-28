@@ -1,15 +1,20 @@
-#!name=KEMO 
-#!desc=每日自动看视频签到+15积分。首次使用：打开「捕获Token」开关 → 荣威App进一次签到页 → 收到通知后关闭开关。
-#!author=你的名字
+#!name=上汽荣威自动签到
+#!desc=🚗 多账号自动看视频签到，+15积分/天。首次使用：打开「捕获Token」→ 荣威App进一次签到页 → 收到通知后关闭。支持多账号/重试/连续签到统计
+#!author=KEMO 
 #!homepage=https://github.com/z13193041903/Loon-
 #!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Car.png
 #!category=签到
 #!date=2026-10-28
 
 [Argument]
-capture = 捕获 Token, false
+capture = 捕获Token开关（抓完请关闭）, false
+accounts = 多账号列表（格式 token#userid@token#userid，单人留空）,
+notify = 签到结果通知, true
+maxtimes = 每日签到次数（上限3）, 3
+delay = 每次签到间隔秒数, 2
+debug = 调试日志（排查问题时打开）, false
 cron = 定时表达式, 0 8 * * *
 
 [Script]
 http-request (?i)https?:\/\/social\.roewe\.com\.cn\/api\/energy\/task script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/上汽荣威签到/roewe_capture.js, tag=荣威Token捕获, argument={capture}, enable={capture}
-cron ({cron}) script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/上汽荣威签到/roewe_checkin.js, tag=上汽荣威签到, enable=true
+cron ({cron}) script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/上汽荣威签到/roewe_checkin.js, tag=上汽荣威签到, argument={notify}&{maxtimes}&{delay}&{accounts}&{debug}, enable=true
