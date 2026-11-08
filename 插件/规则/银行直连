@@ -1,0 +1,140 @@
+#!name=Bank Direct
+#!desc=银行/金融类 App 流量直连，避免因出口 IP 为代理而被判定环境异常
+#!version=2026.11.08.1
+#!author=you
+#
+# ============================================================================
+#  Loon / Surge 通用规则集：银行 App 直连
+#
+#  【维护约定】
+#  - 每条规则一行，仅写 `类型,值`，不写策略（策略由引用处的 RULE-SET 指定）
+#  - 新增域名按分组插入，保持字母序，方便 diff 和查重
+#  - 修改后递增顶部 #!version 的末位，便于确认设备拉到了新版本
+#
+#  【重要】本文件不含 GEOIP,CN。全局兜底请写在主配置 [Rule] 里（见示例
+#  loon-rules.conf），不要放进规则集——规则集应当只描述"银行"这一件事。
+#
+#  【引用方式】
+#    RULE-SET,<本地路径或URL>,DIRECT
+#  该行必须位于 FINAL / MATCH 之前。
+# ============================================================================
+
+# ---------- 国有大型银行 ----------
+DOMAIN-SUFFIX,icbc.com.cn
+DOMAIN-SUFFIX,icbc-ltd.com
+DOMAIN-SUFFIX,95588.com
+DOMAIN-SUFFIX,abchina.com
+DOMAIN-SUFFIX,abchina.com.cn
+DOMAIN-SUFFIX,95599.cn
+DOMAIN-SUFFIX,boc.cn
+DOMAIN-SUFFIX,bankofchina.com
+DOMAIN-SUFFIX,bocim.com
+DOMAIN-SUFFIX,ccb.com
+DOMAIN-SUFFIX,ccb.cn
+DOMAIN-SUFFIX,ccb.com.cn
+DOMAIN-SUFFIX,bankcomm.com
+DOMAIN-SUFFIX,bankcomm.com.cn
+DOMAIN-SUFFIX,psbc.com
+DOMAIN-SUFFIX,psbc.com.cn
+
+# ---------- 股份制银行 ----------
+DOMAIN-SUFFIX,cmbchina.com
+DOMAIN-SUFFIX,cmbchina.cn
+DOMAIN-SUFFIX,cmbimg.com
+DOMAIN-SUFFIX,citicbank.com
+DOMAIN-SUFFIX,citicbank.com.cn
+DOMAIN-SUFFIX,ecitic.com
+DOMAIN-SUFFIX,spdb.com.cn
+DOMAIN-SUFFIX,spdb.com
+DOMAIN-SUFFIX,cmbc.com.cn
+DOMAIN-SUFFIX,cib.com.cn
+DOMAIN-SUFFIX,cib.com
+DOMAIN-SUFFIX,cebbank.com
+DOMAIN-SUFFIX,hxb.com.cn
+DOMAIN-SUFFIX,cgbchina.com.cn
+DOMAIN-SUFFIX,cgbchina.cn
+DOMAIN-SUFFIX,pingan.com
+DOMAIN-SUFFIX,pingan.cn
+DOMAIN-SUFFIX,czbank.com
+DOMAIN-SUFFIX,hfbank.com.cn
+DOMAIN-SUFFIX,cbhb.com.cn
+
+# ---------- 城市商业银行 ----------
+DOMAIN-SUFFIX,bankofbeijing.com.cn
+DOMAIN-SUFFIX,bosc.cn
+DOMAIN-SUFFIX,bankofshanghai.com
+DOMAIN-SUFFIX,jsbchina.cn
+DOMAIN-SUFFIX,nbcb.com.cn
+DOMAIN-SUFFIX,njcb.com.cn
+DOMAIN-SUFFIX,hzbank.com.cn
+DOMAIN-SUFFIX,hsbank.com.cn
+DOMAIN-SUFFIX,cscb.cn
+DOMAIN-SUFFIX,bocd.com.cn
+DOMAIN-SUFFIX,cqcbank.com
+DOMAIN-SUFFIX,zzbank.cn
+DOMAIN-SUFFIX,qdbank.com
+DOMAIN-SUFFIX,bank-of-tianjin.com
+DOMAIN-SUFFIX,xacbank.com
+DOMAIN-SUFFIX,gybank.cn
+DOMAIN-SUFFIX,hrbb.com.cn
+DOMAIN-SUFFIX,shengjingbank.com.cn
+DOMAIN-SUFFIX,jinzhoubank.com
+DOMAIN-SUFFIX,suzhoubank.com
+DOMAIN-SUFFIX,bankofrizhao.com.cn
+
+# ---------- 农商行 / 农信社 ----------
+DOMAIN-SUFFIX,srcb.com
+DOMAIN-SUFFIX,bjrcb.com
+DOMAIN-SUFFIX,grcbank.com
+DOMAIN-SUFFIX,cqrcb.com
+DOMAIN-SUFFIX,drcbank.com
+DOMAIN-SUFFIX,szrcb.com
+DOMAIN-SUFFIX,jsnx.com
+DOMAIN-SUFFIX,zj96596.com
+
+# ---------- 互联网银行 ----------
+DOMAIN-SUFFIX,webank.com
+DOMAIN-SUFFIX,webank.cn
+DOMAIN-SUFFIX,mybank.cn
+DOMAIN-SUFFIX,mybank.com
+DOMAIN-SUFFIX,xwbank.com
+DOMAIN-SUFFIX,aibank.com
+DOMAIN-SUFFIX,yilianbank.com
+
+# ---------- 外资 / 合资银行 ----------
+DOMAIN-SUFFIX,hsbc.com.cn
+DOMAIN-SUFFIX,sc.com
+DOMAIN-SUFFIX,citibank.com.cn
+DOMAIN-SUFFIX,hkbea.com
+DOMAIN-SUFFIX,dbs.com.cn
+DOMAIN-SUFFIX,hangseng.com.cn
+
+# ---------- 清算 / 征信 / 监管 ----------
+DOMAIN-SUFFIX,unionpay.com
+DOMAIN-SUFFIX,unionpay.cn
+DOMAIN-SUFFIX,95516.com
+DOMAIN-SUFFIX,pbccrc.org.cn
+DOMAIN-SUFFIX,pbc.gov.cn
+
+# ---------- 银行 App 常用第三方 SDK（推送 / 风控 / 验证码） ----------
+DOMAIN-SUFFIX,umeng.com
+DOMAIN-SUFFIX,umengcloud.com
+DOMAIN-SUFFIX,getui.com
+DOMAIN-SUFFIX,igexin.com
+DOMAIN-SUFFIX,jiguang.cn
+DOMAIN-SUFFIX,jpush.cn
+DOMAIN-SUFFIX,geetest.com
+DOMAIN-SUFFIX,geetest.com.cn
+DOMAIN-SUFFIX,ishumei.com
+DOMAIN-SUFFIX,fengkongcloud.com
+DOMAIN-SUFFIX,dingxiang-inc.com
+DOMAIN-SUFFIX,tongdun.cn
+DOMAIN-SUFFIX,tongdun.net
+DOMAIN-SUFFIX,mob.com
+DOMAIN-SUFFIX,mobshark.net
+
+# ---------- 全局兜底（不在此文件） ----------
+# 建议在主配置 [Rule] 的 FINAL 之前加一行：
+#   GEOIP,CN,DIRECT
+# 银行 CDN 域名常变，漏配时靠它兜住；放在规则集里会污染"银行"这一层语义，
+# 也可能与其它规则集重复，所以独立维护。
