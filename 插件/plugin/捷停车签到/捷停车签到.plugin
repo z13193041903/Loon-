@@ -1,11 +1,11 @@
 #!name = 捷停车签到
-#!desc = 🅿️ v1.1 捷停车自动签到领停车币：每日签到+浏览任务，自动刷新token，每天3次检查防漏签、已签到不重复打扰、掉线只提醒一次。首次使用：保持「抓取登录信息」打开 → 进捷停车App打开一次停车币页面 → 收到一次保存通知即可（之后不再弹）。想马上测：点插件里的「捷停车-立即测试」。
+#!desc = 🅿️ v1.1.1 捷停车自动签到领停车币：每日签到+浏览任务，自动刷新token，每天3次检查防漏签、已签到不重复打扰、掉线只提醒一次。首次使用：保持「抓取登录信息」打开 → 进捷停车App打开一次停车币页面 → 收到一次保存通知即可（之后不再弹）。想马上测：点插件里的「捷停车-立即测试」。
 #!author = KEMO
 #!homepage = https://github.com/z13193041903/Loon-/tree/main/插件/plugin/捷停车签到
-#!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Car.png
+#!icon = https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/18/bb/40/18bb40ff-368d-d563-cf12-f21a2bc53e69/icon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.jpg
 #!tag = 签到,积分
 #!date = 2026-11-12
-#!version = 1.1
+#!version = 1.1.1
 #!type = normal
 #!loon_version = 3.5.1(983)
 
