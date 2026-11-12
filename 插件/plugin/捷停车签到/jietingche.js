@@ -1,20 +1,22 @@
 /**********************************************************
  * 捷停车 · 自动签到领停车币 (Loon)
  * 作者: KEMO
- * 版本: v1.0 (2026-11-12, 基于 App 6.5.8 / 60508 的真实抓包)
+ * 版本: v1.1 (2026-11-12, 基于 App 6.5.8 / 60508 的真实抓包)
  *
- * 工作方式:
- * 1) 抓取模式: 打开捷停车 App 时,自动保存登录信息(token 等)
- * 2) 定时模式: 每天自动刷新 token -> 签到(T00) -> 浏览任务 -> 查余额 -> 通知
+ * v1.1 更新:
+ * - 抓取登录信息的弹窗一辈子只弹第一次,之后静默保存
+ * - 每天多次自动检查:已签到就不再打扰;没签到自动重试(默认3次)
+ * - 掉线检测:登录失效时每天只提醒一次,请打开 App 即可恢复
+ * - 结果通知更详细:每项领了多少、今日合计、余额、任务进度
+ * - 新增「点我测试」手动入口,可立即运行一次
  *
- * 说明:
- * - 看视频任务(T02,60币) 经分析有广告平台的服务端校验,
- *   不能靠接口直接跳过。插件里有实验开关,默认关闭;
- *   打开后会试着领取一次,并把服务器的真实回复通知你。
- * - 本文件不保存你的账号信息,登录信息只存在 Loon 本地。
+ * 说明: 看视频任务(T02,60币)有广告平台的服务端校验,不能
+ * 靠接口直接跳过。插件有实验开关(默认关),打开后每天试一次
+ * 并把服务器的真实回复写进通知。
  **********************************************************/
 
 const STORE_KEY = "jtc_account_v1";
+const STATE_KEY = "jtc_day_state_v1";
 const SECRET = "Uvn76f3KgH9jlO9pCxZA12Swr5TeYQ8d"; // 网关签名密钥(公开脚本中使用的同一把)
 const MBR = "https://mbr.jparking.cn";
 const SYT = "https://sytgate.jslife.com.cn";
@@ -23,7 +25,7 @@ const DEFAULT_VER = "60508";
 
 // ---------- 小工具 ----------
 function log(s) { console.log("[捷停车] " + s); }
-function notify(sub, body) { try { $notification.post("捷停车 · 停车币", sub, body); } catch (e) {} }
+function notify(sub, body) { try { $notification.post("捷停车签到", sub, body); } catch (e) {} }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function uuid() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -32,6 +34,11 @@ function uuid() {
   }).toUpperCase();
 }
 function nowTs() { return String(Date.now()); }
+function todayStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
 
 // ---------- MD5 (RFC1321) ----------
 function utf8Bytes(str) {
@@ -103,10 +110,15 @@ function signedBody(obj) {
 }
 
 // ---------- 存储 ----------
-function loadAcc() {
-  try { return JSON.parse($persistentStore.read(STORE_KEY) || "{}"); } catch (e) { return {}; }
-}
+function readJSON(key) { try { return JSON.parse($persistentStore.read(key) || "{}"); } catch (e) { return {}; } }
+function loadAcc() { return readJSON(STORE_KEY); }
 function saveAcc(acc) { $persistentStore.write(JSON.stringify(acc), STORE_KEY); }
+function loadState() {
+  const s = readJSON(STATE_KEY);
+  if (s.date !== todayStr()) return { date: todayStr(), successNotified: false, failNotified: false, offlineNotified: false };
+  return s;
+}
+function saveState(s) { $persistentStore.write(JSON.stringify(s), STATE_KEY); }
 function userIdFromToken(token) {
   try {
     const p = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -146,11 +158,9 @@ function mbrPost(acc, path, extra) {
   return post(MBR + path, mbrHeaders(acc), body);
 }
 
-// ---------- 模式一:抓取登录信息 ----------
+// ---------- 模式一:抓取登录信息(只弹第一次) ----------
 function capture() {
-  const url = $request.url || "";
   let acc = loadAcc();
-  const oldToken = acc.token;
   try {
     const body = JSON.parse($request.body || "{}");
     const headers = $request.headers || {};
@@ -162,53 +172,78 @@ function capture() {
     if (body.userId) acc.userId = body.userId;
     if (body.applictionVersion) acc.appVer = body.applictionVersion;
     if (!acc.userId && acc.token) acc.userId = userIdFromToken(acc.token);
-    saveAcc(acc);
-    if (acc.token && acc.token !== oldToken) {
-      log("登录信息已更新并保存");
-      notify("登录信息已保存 ✅", "以后每天会自动签到领停车币,不用管它了。");
+    const firstTime = !acc.welcomed;
+    const recapture = !!acc.needRecapture;
+    if (acc.token) {
+      acc.needRecapture = false;
+      acc.welcomed = true;
+      saveAcc(acc);
+      if (firstTime) {
+        log("登录信息首次保存成功");
+        notify("登录信息已保存 ✅", "只提醒这一次，以后保存都静悄悄的。每天会自动签到领停车币。");
+      } else if (recapture) {
+        log("掉线后重新保存成功");
+        notify("登录已恢复 ✅", "掉线后重新抓到了登录信息，自动签到继续。");
+      } else {
+        log("登录信息已静默更新");
+      }
     }
   } catch (e) { log("抓取解析失败: " + e); }
   $done({});
 }
 
-// ---------- 模式二:定时任务 ----------
+// ---------- 参数 ----------
 function getArgs() {
-  let browse = true, video = false, notifyOn = true;
+  let a = { browse: true, video: false, notify: true, retry: 3, manual: false };
   function applyObj(o) {
     const g = k => (typeof o[k] !== "undefined") ? o[k] : o[k.toUpperCase()];
-    if (typeof g("browse") !== "undefined") browse = (g("browse") === true || g("browse") === "true");
-    if (typeof g("video") !== "undefined") video = (g("video") === true || g("video") === "true");
-    if (typeof g("notify") !== "undefined") notifyOn = (g("notify") === true || g("notify") === "true");
+    const asBool = v => (v === true || v === "true");
+    if (typeof g("browse") !== "undefined") a.browse = asBool(g("browse"));
+    if (typeof g("video") !== "undefined") a.video = asBool(g("video"));
+    if (typeof g("notify") !== "undefined") a.notify = asBool(g("notify"));
+    if (typeof g("manual") !== "undefined") a.manual = asBool(g("manual"));
+    if (typeof g("retry") !== "undefined") { const n = parseInt(g("retry"), 10); if (!isNaN(n)) a.retry = Math.min(Math.max(n, 1), 5); }
   }
   try {
-    let a = (typeof $argument !== "undefined") ? $argument : null;
-    if (typeof a === "string") {
-      const s = a.trim();
+    let raw = (typeof $argument !== "undefined") ? $argument : null;
+    if (typeof raw === "string") {
+      const s = raw.trim();
       if (s.indexOf("=") > -1 && s.indexOf("{") !== 0) {
         const o = {};
         s.split("&").forEach(p => { const i = p.indexOf("="); if (i > 0) o[p.slice(0, i)] = p.slice(i + 1); });
         applyObj(o);
       } else { try { applyObj(JSON.parse(s)); } catch (e) {} }
-    } else if (a && !Array.isArray(a)) applyObj(a);
-    else if (Array.isArray(a)) {
-      if (typeof a[0] !== "undefined") browse = !!a[0];
-      if (typeof a[1] !== "undefined") video = !!a[1];
+    } else if (raw && !Array.isArray(raw)) applyObj(raw);
+    else if (Array.isArray(raw)) {
+      if (typeof raw[0] !== "undefined") a.browse = !!raw[0];
+      if (typeof raw[1] !== "undefined") a.video = !!raw[1];
     }
   } catch (e) {}
-  return { browse: browse, video: video, notify: notifyOn };
+  return a;
 }
 
+// ---------- 模式二:每日签到(带重试与防漏签) ----------
 async function runDaily() {
   const args = getArgs();
+  const state = loadState();
   let acc = loadAcc();
+
+  function alertOffline(msg) {
+    acc.needRecapture = true; saveAcc(acc);
+    if (!state.offlineNotified || args.manual) {
+      notify("可能掉线了 ⚠️", msg + "\n打开捷停车 App 停留几秒就会自动恢复，今天不会再重复提醒。");
+      state.offlineNotified = true; saveState(state);
+    } else log("掉线提醒今天已发过，静默");
+  }
+
   if (!acc.token) {
-    notify("还没抓到登录信息 ⚠️", "请先打开捷停车 App,进一次「停车币/积分」页面,再等明天的自动运行。");
+    notify("还没抓到登录信息 ⚠️", "请先打开捷停车 App，进一次停车币页面，插件会自动保存。");
     return $done();
   }
   if (!acc.userId) acc.userId = userIdFromToken(acc.token);
-  const lines = [];
 
-  // 1) 刷新 token(能保活,避免 30 天过期)
+  // 1) 刷新 token
+  let tokenDead = false;
   if (acc.deviceId) {
     try {
       const b = signedBody({
@@ -222,78 +257,131 @@ async function runDaily() {
         if (r.obj.userId) acc.userId = r.obj.userId;
         saveAcc(acc);
         log("token 刷新成功");
-      } else { log("token 刷新未成功: " + JSON.stringify(r).slice(0, 150)); }
-    } catch (e) { log("token 刷新出错: " + e); }
+      } else if (r && (String(r.resultCode) === "10011" || String(r.resultCode) === "3126")) {
+        tokenDead = true;
+        log("token 已失效: " + JSON.stringify(r).slice(0, 150));
+      } else { log("token 刷新未成功(继续用旧token试): " + JSON.stringify(r).slice(0, 120)); }
+    } catch (e) { log("token 刷新网络出错(继续试): " + e); }
   }
+  if (tokenDead) { alertOffline("登录信息已过期。"); return $done(); }
 
-  try {
-    // 2) 签到
-    const sq = await mbrPost(acc, "/member-core-gateway/integral/v2/sign-in-task/query", {});
-    if (sq && sq.success && sq.data) {
-      if (!sq.data.todaySingInTag) {
+  const lines = [];
+  let totalGain = 0;
+  let progressDone = 0, progressTotal = 0;
+
+  // 2) 签到(失败自动重试,每次都复查状态)
+  progressTotal += 1;
+  let signed = false, signInfo = null, lastErr = "";
+  for (let attempt = 1; attempt <= args.retry && !signed; attempt++) {
+    try {
+      const sq = await mbrPost(acc, "/member-core-gateway/integral/v2/sign-in-task/query", {});
+      if (sq && sq.success && sq.data) {
+        signInfo = sq.data;
+        if (sq.data.todaySingInTag) { signed = true; break; }
         const rc = await mbrPost(acc, "/member-core-gateway/integral/v2/task/receive-new",
           { taskNo: sq.data.taskNo || "T00", reqSource: "APP_JTC", osType: "IOS", platformType: "APP" });
-        if (rc && rc.success && rc.data) lines.push("✅ 签到成功 + " + rc.data.integralValue + " 停车币(连签 " + ((sq.data.continueDays || 0) + 1) + " 天)");
-        else lines.push("❌ 签到领取失败: " + ((rc && rc.message) || "未知错误"));
-      } else {
-        lines.push("✅ 今天已经签到过了(连签 " + (sq.data.continueDays || 0) + " 天)");
-      }
-    } else { lines.push("❌ 签到查询失败,可能登录过期,请打开 App 一次"); }
+        if (rc && rc.success && rc.data) {
+          totalGain += rc.data.integralValue || 0;
+          signInfo.gained = rc.data.integralValue;
+          await sleep(1500);
+          const chk = await mbrPost(acc, "/member-core-gateway/integral/v2/sign-in-task/query", {});
+          if (chk && chk.success && chk.data && chk.data.todaySingInTag) { signed = true; signInfo = chk.data; signInfo.gained = rc.data.integralValue; }
+          else lastErr = "领取后复查未显示已签到";
+        } else { lastErr = (rc && rc.message) || "领取接口失败"; }
+      } else { lastErr = (sq && sq.message) || "签到查询失败"; }
+    } catch (e) { lastErr = String(e); }
+    if (!signed && attempt < args.retry) { log("签到第" + attempt + "次未成功(" + lastErr + ")，5秒后重试"); await sleep(5000); }
+  }
+  if (signed) {
+    progressDone += 1;
+    if (signInfo && typeof signInfo.gained !== "undefined") lines.push("✅ 签到成功 +" + signInfo.gained + "币（连签第 " + (signInfo.continueDays || "?") + " 天）");
+    else lines.push("✅ 今日已签到（连签第 " + ((signInfo && signInfo.continueDays) || "?") + " 天）");
+  } else {
+    lines.push("❌ 签到失败（已重试 " + args.retry + " 次）：" + lastErr);
+  }
 
-    // 3) 任务列表
+  // 3) 任务列表
+  let tasks = [];
+  try {
     const tq = await mbrPost(acc, "/member-core-gateway/integral/v2/task/query-new",
       { osType: "IOS", reqVersion: "V2.0", platformType: "APP" });
-    const tasks = (tq && tq.success && Array.isArray(tq.data)) ? tq.data : [];
-    for (const t of tasks) {
-      const name = t.showTitle || t.taskNo;
-      if (t.taskStatus === "RECEIVE" && t.taskNo !== "T00") {
+    if (tq && tq.success && Array.isArray(tq.data)) tasks = tq.data;
+  } catch (e) { log("任务查询出错: " + e); }
+
+  const doneStatus = ["DONE", "FINISH", "FINISHED", "RECEIVED", "COMPLETED"];
+  for (const t of tasks) {
+    const name = t.showTitle || t.taskNo;
+    const isBrowse = t.operateType === "SKIP_BROWSE";
+    const isVideo = t.operateType === "WATCH_VIDEO";
+    if (!isBrowse && !isVideo && t.taskStatus !== "RECEIVE") continue;
+    progressTotal += 1;
+    if (doneStatus.indexOf(t.taskStatus) > -1) { progressDone += 1; continue; }
+    if (t.taskStatus === "RECEIVE") {
+      try {
         const rc = await mbrPost(acc, "/member-core-gateway/integral/v2/task/receive-new",
           { taskNo: t.taskNo, reqSource: "APP_JTC", osType: "IOS", platformType: "APP" });
-        if (rc && rc.success && rc.data) lines.push("✅ 领取「" + name + "」 + " + rc.data.integralValue + " 停车币");
-        continue;
-      }
-      if (t.taskStatus !== "GOTO") continue;
-      if (t.operateType === "SKIP_BROWSE" && args.browse) {
-        const wait = Math.min((t.browseSeconds || 5) + 3, 30);
-        log("浏览任务「" + name + "」等待 " + wait + " 秒模拟浏览");
-        await sleep(wait * 1000);
+        if (rc && rc.success && rc.data) { totalGain += rc.data.integralValue || 0; progressDone += 1; lines.push("✅ 领取「" + name + "」 +" + rc.data.integralValue + "币"); }
+        else lines.push("⚠️ 「" + name + "」领取失败：" + ((rc && rc.message) || ""));
+      } catch (e) { lines.push("⚠️ 「" + name + "」领取出错：" + e); }
+      continue;
+    }
+    if (t.taskStatus !== "GOTO") continue;
+    if (isBrowse && args.browse) {
+      const wait = Math.min((t.browseSeconds || 5) + 3, 30);
+      log("浏览任务「" + name + "」等待 " + wait + " 秒");
+      await sleep(wait * 1000);
+      try {
         const cp = await mbrPost(acc, "/member-core-gateway/integral/v2/task/complete",
           { taskNo: t.taskNo, reqSource: "APP_JTC", receiveTag: "false", osType: "IOS", platformType: "APP" });
         if (cp && cp.success) {
           const rc = await mbrPost(acc, "/member-core-gateway/integral/v2/task/receive-new",
             { taskNo: t.taskNo, reqSource: "APP_JTC", osType: "IOS", platformType: "APP" });
-          if (rc && rc.success && rc.data) lines.push("✅ 「" + name + "」 + " + rc.data.integralValue + " 停车币");
-          else lines.push("⚠️ 「" + name + "」已完成但领取失败: " + ((rc && rc.message) || ""));
-        } else { lines.push("⚠️ 「" + name + "」完成失败: " + ((cp && cp.message) || "")); }
-      } else if (t.operateType === "WATCH_VIDEO") {
-        if (args.video) {
+          if (rc && rc.success && rc.data) { totalGain += rc.data.integralValue || 0; progressDone += 1; lines.push("✅ 「" + name + "」 +" + rc.data.integralValue + "币"); }
+          else lines.push("⚠️ 「" + name + "」已完成，领取失败：" + ((rc && rc.message) || ""));
+        } else lines.push("⚠️ 「" + name + "」完成失败：" + ((cp && cp.message) || ""));
+      } catch (e) { lines.push("⚠️ 「" + name + "」出错：" + e); }
+    } else if (isVideo) {
+      if (args.video) {
+        try {
           const cp = await mbrPost(acc, "/member-core-gateway/integral/v2/task/complete",
             { taskNo: t.taskNo, reqSource: "APP_JTC", receiveTag: "false", osType: "IOS", platformType: "APP" });
           if (cp && cp.success) {
             const rc = await mbrPost(acc, "/member-core-gateway/integral/v2/task/receive-new",
               { taskNo: t.taskNo, reqSource: "APP_JTC", osType: "IOS", platformType: "APP" });
-            if (rc && rc.success && rc.data) lines.push("🎉 「看视频」实验成功 + " + rc.data.integralValue + " 停车币");
-            else lines.push("🎬 「看视频」实验:完成通过了但领取失败: " + ((rc && rc.message) || ""));
-          } else {
-            lines.push("🎬 「看视频」实验失败(在意料之中): " + ((cp && cp.message) || "被广告校验拦截"));
-          }
-        } else {
-          lines.push("🎬 「看视频」 " + t.integralValue + " 币需看广告,已跳过(实验开关在插件设置里)");
-        }
+            if (rc && rc.success && rc.data) { totalGain += rc.data.integralValue || 0; progressDone += 1; lines.push("🎉 「看视频」实验成功 +" + rc.data.integralValue + "币"); }
+            else lines.push("🎬 「看视频」实验：完成通过，领取失败：" + ((rc && rc.message) || ""));
+          } else lines.push("🎬 「看视频」实验失败：" + ((cp && cp.message) || "被广告校验拦截"));
+        } catch (e) { lines.push("🎬 「看视频」实验出错：" + e); }
+      } else {
+        lines.push("🎬 「看视频」 +" + t.integralValue + "币（需看广告，未做）");
       }
     }
-
-    // 4) 余额
-    const bal = await mbrPost(acc, "/member-core-gateway/integral/v2/balance/query", { reqSource: "APP_JTC" });
-    if (bal && bal.success && bal.data) {
-      lines.push("💰 当前停车币 " + bal.data.accountAmt + " 个,可抵扣 " + bal.data.deductAmount + " 元");
-    }
-  } catch (e) {
-    lines.push("❌ 运行出错: " + e);
   }
 
+  // 4) 余额
+  let balanceLine = "";
+  try {
+    const bal = await mbrPost(acc, "/member-core-gateway/integral/v2/balance/query", { reqSource: "APP_JTC" });
+    if (bal && bal.success && bal.data) balanceLine = "💰 今日共 +" + totalGain + "币｜余额 " + bal.data.accountAmt + "币（可抵扣 " + bal.data.deductAmount + " 元）";
+  } catch (e) { log("余额查询出错: " + e); }
+  if (balanceLine) lines.push(balanceLine);
+  lines.push("📊 今日任务进度 " + progressDone + "/" + progressTotal);
+
+  const allDone = signed && progressDone >= progressTotal - (tasks.some(t => t.operateType === "WATCH_VIDEO" && !args.video) ? 1 : 0);
   log(lines.join("\n"));
-  if (args.notify) notify("今日结果", lines.join("\n"));
+
+  // 5) 通知策略:成功每天只报一次;失败(未签到)每天只提醒一次;手动测试必报
+  if (!signed) {
+    if (!state.failNotified || args.manual) {
+      notify("签到未成功 ❌", lines.join("\n") + "\n今天后面的检查还会自动重试。");
+      state.failNotified = true; saveState(state);
+    } else log("失败提醒今天已发过，静默");
+  } else if (args.manual || !state.successNotified) {
+    if (args.notify || args.manual) notify(allDone ? "今日完成 ✅" : "今日结果", lines.join("\n"));
+    state.successNotified = true; saveState(state);
+  } else {
+    log("今天已汇报过且已签到，本次检查静默");
+  }
   $done();
 }
 

@@ -1,24 +1,27 @@
 #!name = 捷停车签到
-#!desc = 🅿️ 捷停车自动签到领停车币：每日签到+浏览任务约+36币/天，自动刷新token。首次使用：保持「抓取登录信息」打开 → 进捷停车App打开一次停车币页面 → 收到保存通知即可。看视频任务有广告校验，默认跳过（有实验开关）
+#!desc = 🅿️ v1.1 捷停车自动签到领停车币：每日签到+浏览任务，自动刷新token，每天3次检查防漏签、已签到不重复打扰、掉线只提醒一次。首次使用：保持「抓取登录信息」打开 → 进捷停车App打开一次停车币页面 → 收到一次保存通知即可（之后不再弹）。想马上测：点插件里的「捷停车-立即测试」。
 #!author = KEMO
 #!homepage = https://github.com/z13193041903/Loon-/tree/main/插件/plugin/捷停车签到
 #!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Car.png
 #!tag = 签到,积分
 #!date = 2026-11-12
+#!version = 1.1
 #!type = normal
 #!loon_version = 3.5.1(983)
 
 [Argument]
-capture = switch,true,type=boolean,tag=抓取登录信息,desc=打开后捷停车的登录信息会自动保存，token变化时会通知
+capture = switch,true,type=boolean,tag=抓取登录信息,desc=打开捷停车时自动保存登录信息，只在第一次保存时弹窗，之后静默
 browse = switch,true,type=boolean,tag=自动浏览任务,desc=浏览找优惠、浏览车位优选自动完成并领取
-video = switch,false,type=boolean,tag=看视频实验,desc=看视频60币有广告平台校验，大概率失败；打开后每天试一次并通知服务器回复
-notify = switch,true,type=boolean,tag=结果通知,desc=每日签到结果是否推送通知
-cron = input,"5 8 * * *",type=string,tag=定时表达式,desc=符合CRON格式，默认每天8:05
+video = switch,false,type=boolean,tag=看视频实验,desc=看视频60币有广告平台校验，大概率失败；打开后每天试一次并把结果写进通知
+notify = switch,true,type=boolean,tag=结果通知,desc=每日结果是否推送通知（成功每天只报一次，不重复打扰）
+retry = input,"3",type=number,tag=失败重试次数,desc=签到失败时自动重试的次数，只能填1-5
+cron = input,"5 8,12,20 * * *",type=string,tag=定时参数,desc=每天8:05、12:05、20:05各检查一次：已签到就跳过，没签到自动补签，防漏签
 
 [Script]
 http-request ^https://sytgate\.jslife\.com\.cn/core-gateway/user/login/verify/token script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车-抓取登录信息, requires-body=true, enable={capture}
 http-request ^https://mbr\.jparking\.cn/member-core-gateway/integral/v2/ script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车-抓取登录信息, requires-body=true, enable={capture}
-cron ({cron}) script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车签到, timeout=180, argument=browse={browse}&video={video}&notify={notify}, enable=true
+generic script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车-立即测试, timeout=180, argument=browse={browse}&video={video}&notify=true&manual=true&retry={retry}, enable=true
+cron ({cron}) script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车签到, timeout=180, argument=browse={browse}&video={video}&notify={notify}&retry={retry}, enable=true
 
 [Mitm]
 hostname = sytgate.jslife.com.cn, mbr.jparking.cn
