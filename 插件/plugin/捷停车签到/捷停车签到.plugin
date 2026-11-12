@@ -1,0 +1,24 @@
+#!name = 捷停车签到
+#!desc = 🅿️ 捷停车自动签到领停车币：每日签到+浏览任务约+36币/天，自动刷新token。首次使用：保持「抓取登录信息」打开 → 进捷停车App打开一次停车币页面 → 收到保存通知即可。看视频任务有广告校验，默认跳过（有实验开关）
+#!author = KEMO
+#!homepage = https://github.com/z13193041903/Loon-/tree/main/插件/plugin/捷停车签到
+#!icon = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Car.png
+#!tag = 签到,积分
+#!date = 2026-11-12
+#!type = normal
+#!loon_version = 3.5.1(983)
+
+[Argument]
+capture = switch,true,type=boolean,tag=抓取登录信息,desc=打开后捷停车的登录信息会自动保存，token变化时会通知
+browse = switch,true,type=boolean,tag=自动浏览任务,desc=浏览找优惠、浏览车位优选自动完成并领取
+video = switch,false,type=boolean,tag=看视频实验,desc=看视频60币有广告平台校验，大概率失败；打开后每天试一次并通知服务器回复
+notify = switch,true,type=boolean,tag=结果通知,desc=每日签到结果是否推送通知
+cron = input,"5 8 * * *",type=string,tag=定时表达式,desc=符合CRON格式，默认每天8:05
+
+[Script]
+http-request ^https://sytgate\.jslife\.com\.cn/core-gateway/user/login/verify/token script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车-抓取登录信息, requires-body=true, enable={capture}
+http-request ^https://mbr\.jparking\.cn/member-core-gateway/integral/v2/ script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车-抓取登录信息, requires-body=true, enable={capture}
+cron ({cron}) script-path=https://raw.githubusercontent.com/z13193041903/Loon-/main/插件/plugin/捷停车签到/jietingche.js, tag=捷停车签到, timeout=180, argument=browse={browse}&video={video}&notify={notify}, enable=true
+
+[Mitm]
+hostname = sytgate.jslife.com.cn, mbr.jparking.cn
