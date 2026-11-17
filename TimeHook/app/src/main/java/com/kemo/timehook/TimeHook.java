@@ -92,7 +92,9 @@ public class TimeHook implements IXposedHookLoadPackage {
             XposedBridge.log("TimeHook: drawText hook failed: " + t);
         }
 
-        // 2）照片里藏着的防伪时间：写入时换、读出时也换，双保险
+        // 2）照片里藏着的防伪时间（三段对齐值）：只在写入时换，三个值必须是同一个时间
+        //    第二版把“读出时”也换了，每次读到的时间都不一样，相机一对就对不上，拍摄失败。
+        //    第三版改成：一次拍摄里所有数据时间都用同一个假时间（见 fakeNowData）。
         try {
             Class<?> verifyInfo = XposedHelpers.findClassIfExists(
                     "com.xhey.foundation.model.exif.WatermarkVerificationInfo",
@@ -100,9 +102,7 @@ public class TimeHook implements IXposedHookLoadPackage {
             if (verifyInfo != null) {
                 String[] names = {
                         "setCreatedTime_aligned", "setCreatedTime_aligned_second",
-                        "setCreatedTime_aligned_third",
-                        "getCreatedTime_aligned", "getCreatedTime_aligned_second",
-                        "getCreatedTime_aligned_third"};
+                        "setCreatedTime_aligned_third"};
                 for (String name : names) {
                     try {
                         XposedBridge.hookAllMethods(verifyInfo, name, dataHook());
@@ -121,7 +121,7 @@ public class TimeHook implements IXposedHookLoadPackage {
                     lpparam.classLoader);
             if (exifComment != null) {
                 String[] names = {"setCreateTime", "setDateTimeOriginal",
-                        "setDateTimeDigitized", "setUserComment"};
+                        "setDateTimeDigitized"};
                 for (String name : names) {
                     try {
                         XposedBridge.hookAllMethods(exifComment, name, dataHook());
@@ -134,7 +134,12 @@ public class TimeHook implements IXposedHookLoadPackage {
         }
     }
 
-    /** 防伪/EXIF 数据的替换：数字就换成假时间戳，文字就走认字替换 */
+    /**
+     * 防伪/EXIF 数据的替换（只在写入时）：
+     * - 数字时间戳 → 统一的假时间（fakeNowData）
+     * - 长得像时间戳的字符串、像 EXIF 时间的字符串 → 同样换成那个假时间
+     * - 其它内容一律不碰（第二版连说明文字都改，把数据弄坏了）
+     */
     private XC_MethodHook dataHook() {
         return new XC_MethodHook() {
             @Override
@@ -144,39 +149,36 @@ public class TimeHook implements IXposedHookLoadPackage {
                     for (int i = 0; i < param.args.length; i++) {
                         Object a = param.args[i];
                         if (a instanceof Long) {
-                            param.args[i] = fakeNow();
+                            param.args[i] = fakeNowData();
                         } else if (a instanceof String) {
                             String s = (String) a;
                             if (s.matches("\\d{13}")) {
-                                param.args[i] = String.valueOf(fakeNow());
-                            } else {
-                                param.args[i] = rewrite(s);
+                                param.args[i] = String.valueOf(fakeNowData());
+                            } else if (s.matches("\\d{4}:\\d{2}:\\d{2} \\d{2}:\\d{2}:\\d{2}")) {
+                                param.args[i] = format("yyyy:MM:dd HH:mm:ss", fakeNowData());
+                            } else if (s.matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")) {
+                                param.args[i] = format("yyyy-MM-dd HH:mm:ss", fakeNowData());
                             }
-                        }
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                try {
-                    if (!isOn()) return;
-                    Object r = param.getResult();
-                    if (r instanceof Long) {
-                        param.setResult(fakeNow());
-                    } else if (r instanceof String) {
-                        String s = (String) r;
-                        if (s.matches("\\d{13}")) {
-                            param.setResult(String.valueOf(fakeNow()));
-                        } else {
-                            param.setResult(rewrite(s));
+                            // 其它字符串不动
                         }
                     }
                 } catch (Throwable ignored) {
                 }
             }
         };
+    }
+
+    // 一次拍摄用的统一假时间：2 秒内反复取都是同一个值，保证几个时间严丝合缝
+    private static volatile long dataFakeCache = 0;
+    private static volatile long dataFakeCacheAt = -10000;
+
+    static long fakeNowData() {
+        long elapsed = SystemClock.elapsedRealtime();
+        if (dataFakeCache == 0 || elapsed - dataFakeCacheAt > 2000) {
+            dataFakeCache = fakeNow();
+            dataFakeCacheAt = elapsed;
+        }
+        return dataFakeCache;
     }
 
     // ---------------- 下面是共用的小工具 ----------------
