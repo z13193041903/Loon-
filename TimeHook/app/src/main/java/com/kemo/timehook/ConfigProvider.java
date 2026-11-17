@@ -31,13 +31,14 @@ public class ConfigProvider extends ContentProvider {
                         String[] selectionArgs, String sortOrder) {
         SharedPreferences sp = getContext().getSharedPreferences(
                 MainActivity.PREFS, Context.MODE_PRIVATE);
-        // 把三样东西排成一行表格递出去，顺序固定：开关、起点、锚点
+        // 把四样东西排成一行表格递出去，顺序固定：开关、起点、墙钟锚点、计时器锚点
         MatrixCursor cursor = new MatrixCursor(
-                new String[]{"enabled", "fake_start", "anchor_real"});
+                new String[]{"enabled", "fake_start", "anchor_real", "anchor_elapsed"});
         cursor.addRow(new Object[]{
                 sp.getBoolean(MainActivity.KEY_ENABLED, false) ? 1 : 0,
                 sp.getLong(MainActivity.KEY_FAKE_START, 0),
-                sp.getLong(MainActivity.KEY_ANCHOR_REAL, 0)
+                sp.getLong(MainActivity.KEY_ANCHOR_REAL, 0),
+                sp.getLong(MainActivity.KEY_ANCHOR_ELAPSED, 0)
         });
         return cursor;
     }

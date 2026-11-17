@@ -6,6 +6,7 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -40,6 +41,7 @@ public class MainActivity extends Activity {
     public static final String KEY_ENABLED = "enabled";       // 开关：开没开
     public static final String KEY_FAKE_START = "fake_start"; // 你选的时间（起点）
     public static final String KEY_ANCHOR_REAL = "anchor_real"; // 保存那一刻的真实时间
+    public static final String KEY_ANCHOR_ELAPSED = "anchor_elapsed"; // 保存那一刻的开机计时器
 
     private Switch switchEnabled;
     private TextView tvChosen;
@@ -75,6 +77,7 @@ public class MainActivity extends Activity {
                     .putBoolean(KEY_ENABLED, switchEnabled.isChecked())
                     .putLong(KEY_FAKE_START, chosenMillis)
                     .putLong(KEY_ANCHOR_REAL, System.currentTimeMillis()) // 锚点：从这一刻开始算
+                    .putLong(KEY_ANCHOR_ELAPSED, SystemClock.elapsedRealtime()) // 开机计时器锚点：算流逝时长用它，最稳
                     .apply();
             Toast.makeText(this,
                     "已保存。把今日水印相机彻底关掉再打开，就能看到新时间了",
