@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 这是模块的“户口本”：告诉系统这个安装包里有什么 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:allowBackup="true">
+
+        <!-- 设置页：你在桌面点开这个模块时看到的页面 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 配置小通道：今日水印相机那边就是通过它来读你设的时间的 -->
+        <provider
+            android:name=".ConfigProvider"
+            android:authorities="com.kemo.timehook.config"
+            android:exported="true" />
+
+        <!-- 下面三行是告诉 LSPosed：我是一个模块 -->
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="只改今日水印相机的时间：设一个时间，它自己往前走（学习用）" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
+    </application>
+
+</manifest>

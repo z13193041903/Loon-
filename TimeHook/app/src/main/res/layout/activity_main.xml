@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页的样子：一列从上往下排 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="改时间小模块"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="只对「今日水印相机」生效。设好一个时间点保存之后，它眼里的时间就从那个点开始，自己往前走。"
+        android:textSize="14sp" />
+
+    <!-- 开关：开 = 改时间；关 = 恢复真实时间 -->
+    <Switch
+        android:id="@+id/switch_enabled"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="开启改时间"
+        android:textSize="16sp" />
+
+    <!-- 显示当前选好的时间 -->
+    <TextView
+        android:id="@+id/tv_chosen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="还没选时间"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/btn_pick"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="选日期和时间" />
+
+    <Button
+        android:id="@+id/btn_save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="保存（从保存这一刻开始走）" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="保存之后，把今日水印相机彻底关掉再重新打开，就能看到新时间了。以后再改设置，它最多过半分钟也会自己刷新，不用重开也行。"
+        android:textSize="13sp" />
+
+</LinearLayout>
