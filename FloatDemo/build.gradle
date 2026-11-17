@@ -1,0 +1,21 @@
+// 工程总配置文件（不用改这里）
+// 这里写了两件事：用哪个版本的打包工具、去哪里下载需要的零件。
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // 安卓打包工具的版本
+        classpath 'com.android.tools.build:gradle:8.1.4'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        // Xposed 零件（挂钩用的工具包）从这个仓库下载
+        maven { url 'https://api.xposed.info/' }
+    }
+}

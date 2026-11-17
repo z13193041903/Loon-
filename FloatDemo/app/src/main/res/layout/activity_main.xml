@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置页的样子：一列从上往下排 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="悬浮按钮练手"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="这是一个专门练手的小模块。装好后，在 LSPosed 里给它勾上「设置」，再打开手机的系统设置，界面上就会多出一个半透明的小按钮：能拖着到处放，点一下就能改它的文字和透明度。"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="按钮上的文字"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/et_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="比如：设置"
+        android:textSize="16sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="透明度（左边最透，右边不透）"
+        android:textSize="16sp" />
+
+    <SeekBar
+        android:id="@+id/sb_alpha"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="80" />
+
+    <Switch
+        android:id="@+id/sw_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="按钮上显示现在几点（每秒跳一下）"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/btn_save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="保存" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="小提示：在系统设置里点那个悬浮按钮，也能改同样的设置。两边改的是同一份设置，谁改都立刻算数——这就是这个练手模块最值得学的地方。"
+        android:textSize="13sp" />
+
+</LinearLayout>
